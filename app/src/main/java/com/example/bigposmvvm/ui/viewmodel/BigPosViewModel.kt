@@ -3,13 +3,18 @@ package com.example.bigposmvvm.ui.viewmodel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.bigposmvvm.data.model.AccessLoginM
 import com.example.bigposmvvm.data.model.ConfigM
 import com.example.bigposmvvm.data.model.LoginM
 import com.example.bigposmvvm.data.sharedPreference.ConfigPreference
-import com.example.bigposmvvm.domain.GetLoginUseCases
+import com.example.bigposmvvm.domain.useCase.GetLoginUseCases
 import com.example.bigposmvvm.domain.model.AccessLogin
+import com.example.bigposmvvm.ui.viewUtil.LoginState
+import com.example.bigposmvvm.util.ResponseState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,14 +27,25 @@ class BigPosViewModel @Inject constructor(
 
 ) : ViewModel() {
 
-    val userModel = MutableLiveData<AccessLogin?>()
-    val configModel : MutableLiveData<ConfigM> = MutableLiveData()
-    val loginModel : MutableLiveData<LoginM> = MutableLiveData()
+    private val userModel = MutableStateFlow(LoginState())
+    var _userModel: StateFlow<LoginState> = userModel
 
-    fun login() {
-        viewModelScope.launch {
-            val result = getLoginUseCases()
-            userModel.value = result
+    val configModel : MutableLiveData<ConfigM> = MutableLiveData()
+    private val loginModel : MutableLiveData<LoginM> = MutableLiveData()
+
+    fun login(user:String, pass:String) = viewModelScope.launch(Dispatchers.IO){
+        getLoginUseCases(user = user, pass = pass).collect{
+            when(it){
+                is ResponseState.Success ->{
+                    userModel.value = LoginState(accessLogin = it.data)
+                }
+                is ResponseState.Loading ->{
+                    userModel.value = LoginState(isLoading = true)
+                }
+                is ResponseState.Error ->{
+                    userModel.value = LoginState(error = it.message?: "An Unexpected Error")
+                }
+            }
         }
     }
 

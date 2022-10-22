@@ -4,23 +4,33 @@ import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.lifecycle.Observer
+import androidx.lifecycle.lifecycleScope
 import com.example.bigposmvvm.data.model.ConfigM
 import com.example.bigposmvvm.data.model.LoginM
 import com.example.bigposmvvm.databinding.ActivityLoginBinding
+import com.example.bigposmvvm.ui.view.activity.menu.MenuActivity
 import com.example.bigposmvvm.ui.view.utils.LoadingDialog
 import com.example.bigposmvvm.ui.viewmodel.BigPosViewModel
+import com.example.bigposmvvm.util.HostSelectionInterceptor
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class LoginActivity : AppCompatActivity() {
 
-    companion object{
-        lateinit var configServer: ConfigM
-        lateinit var user:String
-        lateinit var pass:String
+    companion object {
+        var configServer: ConfigM = ConfigM(
+            ip = "http://bigpos.ddns.net:1106",
+            ep = "01",
+            es = "01"
+        )
     }
 
     private lateinit var binding: ActivityLoginBinding
@@ -33,6 +43,7 @@ class LoginActivity : AppCompatActivity() {
             }
         }
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityLoginBinding.inflate(layoutInflater)
@@ -40,6 +51,7 @@ class LoginActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
         this.setEventHandlers()
         this.defaultConfig()
+
     }
 
     /*private fun automaticLogin() {
@@ -69,27 +81,53 @@ class LoginActivity : AppCompatActivity() {
 
         this.binding.btnIngresar.setOnClickListener {
 
-            user = binding.etUser.text.toString()
-            pass = binding.etPass.text.toString()
+            val user = binding.etUser.text.toString()
+            val pass = binding.etPass.text.toString()
 
-            bigPosViewModel.login()
-            bigPosViewModel.userModel.observe(this, Observer {
-                val result = it
-                println("esta es la segunda $result")
-            })
+            bigPosViewModel.login(user, pass)
+
+            CoroutineScope(Dispatchers.Main).launch {
+                bigPosViewModel._userModel.collect {
+                    when {
+                        it.isLoading -> {
+                            loading.startLoading()
+                        }
+                        it.error.isNotBlank() -> {
+                            loading.isDismiss()
+                            Toast.makeText(this@LoginActivity, it.error, Toast.LENGTH_LONG).show()
+                            loading.isDismiss()
+                        }
+                        it.accessLogin != null -> {
+                            loading.isDismiss()
+                            goLogin()
+                            loading.isDismiss()
+                        }
+                    }
+
+                }
+            }
+
         }
     }
 
 
     private fun defaultConfig() {
 
-        val config = ConfigM(
-            ip = "http://bigpos.ddns.net:1106",
-            ep = "01",
-            es = "01"
-        )
-        configServer = config
-        bigPosViewModel.saveConfig(config)
+        bigPosViewModel.getConfig()
+        bigPosViewModel.configModel.observe(this, Observer {
+            if (it == null) {
+                val config = ConfigM(
+                    ip = "http://bigpos.ddns.net:1106",
+                    ep = "01",
+                    es = "01"
+                )
+                configServer = config
+                bigPosViewModel.saveConfig(config)
+            } else {
+                configServer = it
+            }
+        })
+
     }
 
     private fun goConfig() {
@@ -123,6 +161,12 @@ class LoginActivity : AppCompatActivity() {
 
             })*/
         }
+    }
+
+    private fun goLogin() {
+        val intent = Intent(this, MenuActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 
 }

@@ -16,4 +16,3 @@ data class M_USER(
     var Grupo: Int,
 ):Parcelable
 
-fun AccessLogin.toDatabase() = M_USER(Perfil, NombreUsuario, Contraseña, Grupo)
