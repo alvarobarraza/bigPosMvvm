@@ -1,7 +1,6 @@
 package com.example.bigposmvvm.di
 
 import android.content.Context
-import android.content.SharedPreferences
 import com.example.bigposmvvm.data.sharedPreference.ConfigPreference
 import dagger.Module
 import dagger.Provides

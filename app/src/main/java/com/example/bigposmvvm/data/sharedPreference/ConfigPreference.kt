@@ -61,5 +61,4 @@ class ConfigPreference @Inject constructor(private val context: Context) : Abstr
         }
     }
 
-
 }

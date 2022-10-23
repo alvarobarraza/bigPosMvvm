@@ -8,10 +8,10 @@ import javax.inject.Inject
 
 class BigPosRepositoryImpl @Inject constructor(
     private val api: WebService
-):BigposRepository {
+) : BigposRepository {
 
     override suspend fun getLogin(user: String, pass: String): AccessLoginM {
-        return api.getLogin(configServer = configServer.ip, user = user, pass = pass)
+        return api.getLogin("${configServer.ip}/bigserver/login?idMainCompany=${configServer.ep}&user=$user&password=$pass")
     }
 
 }

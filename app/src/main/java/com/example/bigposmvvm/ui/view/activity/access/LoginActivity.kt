@@ -9,9 +9,11 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
+import com.example.bigposmvvm.data.model.AccessLoginM
 import com.example.bigposmvvm.data.model.ConfigM
 import com.example.bigposmvvm.data.model.LoginM
 import com.example.bigposmvvm.databinding.ActivityLoginBinding
+import com.example.bigposmvvm.domain.model.AccessLogin
 import com.example.bigposmvvm.ui.view.activity.menu.MenuActivity
 import com.example.bigposmvvm.ui.view.utils.LoadingDialog
 import com.example.bigposmvvm.ui.viewmodel.BigPosViewModel
@@ -49,25 +51,42 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
-        this.setEventHandlers()
         this.defaultConfig()
+        this.setEventHandlers()
 
+        /*this.automaticLogin()*/
     }
 
-    /*private fun automaticLogin() {
-        val rUser: Boolean = prefs.getRuser()
-        val user: String = prefs.getUser()
-        val pass: String = prefs.getPass()
+    private fun automaticLogin() {
+        bigPosViewModel.getLogin()
 
-        if (user.isNotEmpty() && pass.isNotEmpty() && rUser) {
-            binding.etUser.setText(user)
-            binding.etPass.setText(pass)
-            //requestLoginAuto()
-        } else {
-            binding.etUser.setText("")
-            binding.etPass.setText("")
-        }
-    }*/
+        bigPosViewModel.loginModel.observe(this, Observer {
+            if(it.checked){
+                bigPosViewModel.login(it.user, it.pass)
+
+                CoroutineScope(Dispatchers.Main).launch {
+                    bigPosViewModel._userModel.collect { value->
+                        when {
+                            value.isLoading -> {
+                                loading.startLoading()
+                            }
+                            value.error.isNotBlank() -> {
+                                loading.isDismiss()
+                                Toast.makeText(this@LoginActivity, value.error, Toast.LENGTH_LONG).show()
+                                loading.isDismiss()
+                            }
+                            value.accessLogin != null -> {
+                                loading.isDismiss()
+                                goLogin()
+                                loading.isDismiss()
+                            }
+                        }
+
+                    }
+                }
+            }
+        })
+    }
 
     private fun setEventHandlers() {
         this.binding.imgBtnConfig.setOnClickListener {
@@ -80,49 +99,17 @@ class LoginActivity : AppCompatActivity() {
         }
 
         this.binding.btnIngresar.setOnClickListener {
-
-            val user = binding.etUser.text.toString()
-            val pass = binding.etPass.text.toString()
-
-            bigPosViewModel.login(user, pass)
-
-            CoroutineScope(Dispatchers.Main).launch {
-                bigPosViewModel._userModel.collect {
-                    when {
-                        it.isLoading -> {
-                            loading.startLoading()
-                        }
-                        it.error.isNotBlank() -> {
-                            loading.isDismiss()
-                            Toast.makeText(this@LoginActivity, it.error, Toast.LENGTH_LONG).show()
-                            loading.isDismiss()
-                        }
-                        it.accessLogin != null -> {
-                            loading.isDismiss()
-                            goLogin()
-                            loading.isDismiss()
-                        }
-                    }
-
-                }
-            }
-
+            requestLoginAsync()
         }
     }
-
 
     private fun defaultConfig() {
 
         bigPosViewModel.getConfig()
+
         bigPosViewModel.configModel.observe(this, Observer {
             if (it == null) {
-                val config = ConfigM(
-                    ip = "http://bigpos.ddns.net:1106",
-                    ep = "01",
-                    es = "01"
-                )
-                configServer = config
-                bigPosViewModel.saveConfig(config)
+                bigPosViewModel.saveConfig(configServer)
             } else {
                 configServer = it
             }
@@ -147,19 +134,37 @@ class LoginActivity : AppCompatActivity() {
             binding.etPass.error = "Contraseña requerida"
             binding.etPass.requestFocus()
         } else {
-            /*bigPosViewModel.login()
-            bigPosViewModel.userModel.observe(this, Observer { result->
-                val loginAccess = LoginM(
-                    user = result!!.Perfil,
-                    name = result.NombreUsuario,
-                    pass = result.Contraseña,
-                    group = result.Grupo,
-                    checked = checked
-                )
 
-                bigPosViewModel.saveLogin(loginAccess)
+            bigPosViewModel.login(user, pass)
 
-            })*/
+            CoroutineScope(Dispatchers.Main).launch {
+                bigPosViewModel._userModel.collect {
+                    when {
+                        it.isLoading -> {
+                            loading.startLoading()
+                        }
+                        it.error.isNotBlank() -> {
+                            loading.isDismiss()
+                            Toast.makeText(this@LoginActivity, it.error, Toast.LENGTH_LONG).show()
+                            loading.isDismiss()
+                        }
+                        it.accessLogin != null -> {
+                            loading.isDismiss()
+                            val accessLogin = LoginM(
+                                user = it.accessLogin.user,
+                                name = it.accessLogin.name,
+                                pass = it.accessLogin.pass,
+                                group = it.accessLogin.group,
+                                checked = checked
+                            )
+                            bigPosViewModel.saveLogin(accessLogin)
+                            goLogin()
+                            loading.isDismiss()
+                        }
+                    }
+
+                }
+            }
         }
     }
 
