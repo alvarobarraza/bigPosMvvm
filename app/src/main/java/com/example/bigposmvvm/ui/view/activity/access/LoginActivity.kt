@@ -53,8 +53,7 @@ class LoginActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
         this.defaultConfig()
         this.setEventHandlers()
-
-        /*this.automaticLogin()*/
+        this.automaticLogin()
     }
 
     private fun automaticLogin() {
@@ -107,10 +106,16 @@ class LoginActivity : AppCompatActivity() {
 
         bigPosViewModel.getConfig()
 
-        bigPosViewModel.configModel.observe(this, Observer {
-            if (it == null) {
-                bigPosViewModel.saveConfig(configServer)
-            } else {
+        bigPosViewModel.configModel.observe(this@LoginActivity, Observer {
+            if(it == null){
+                val config = ConfigM(
+                    ip = "http://bigpos.ddns.net:1106",
+                    ep = "01",
+                    es = "01"
+                )
+                configServer = config
+                bigPosViewModel.saveConfig(config)
+            }else{
                 configServer = it
             }
         })
